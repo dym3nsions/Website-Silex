@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procrastination Slayer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function PomodoroTimer() {
+            const [timeLeft, setTimeLeft] = React.useState(25 * 60);
+            const [isRunning, setIsRunning] = React.useState(false);
+
+            React.useEffect(() => {
+                let timer;
+                if (isRunning && timeLeft > 0) {
+                    timer = setInterval(() => {
+                        setTimeLeft((prevTime) => prevTime - 1);
+                    }, 1000);
+                } else if (!isRunning && timeLeft !== 0) {
+                    clearInterval(timer);
+                }
+                return () => clearInterval(timer);
+            }, [isRunning, timeLeft]);
+
+            const startTimer = () => setIsRunning(true);
+            const pauseTimer = () => setIsRunning(false);
+            const resetTimer = () => {
+                setIsRunning(false);
+                setTimeLeft(25 * 60);
+            };
+
+            const formatTime = (time) => {
+                const minutes = Math.floor(time / 60);
+                const seconds = time % 60;
+                return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            };
+
+            return (
+                <div id="pomodoro-timer">
+                    <div className="timer-display">{formatTime(timeLeft)}</div>
+                    <div className="timer-controls">
+                        <button onClick={startTimer}>Start</button>
+                        <button onClick={pauseTimer}>Pause</button>
+                        <button onClick={resetTimer}>Reset</button>
+                    </div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [tasks, setTasks] = React.useState([]);
+            const [newTask, setNewTask] = React.useState({
+                title: '',
+                description: '',
+                priority: 'A',
+                deadline: '',
+                period: 'daily',
+                key_result_area: '',
+                time_estimate: '',
+                consequences: '',
+                subtasks: []
+            });
+            const [filter, setFilter] = React.useState('all');
+
+            React.useEffect(() => {
+                fetchTasks();
+            }, [filter]);
+
+            const fetchTasks = async () => {
+                const response = await fetch(`/get_tasks?period=${filter}`);
+                const data = await response.json();
+                setTasks(data);
+            };
+
+            const handleInputChange = (e) => {
+                setNewTask({...newTask, [e.target.name]: e.target.value});
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const response = await fetch('/add_task', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newTask),
+                });
+                if (response.ok) {
+                    fetchTasks();
+                    setNewTask({
+                        title: '',
+                        description: '',
+                        priority: 'A',
+                        deadline: '',
+                        period: 'daily',
+                        key_result_area: '',
+                        time_estimate: '',
+                        consequences: '',
+                        subtasks: []
+                    });
+                }
+            };
+
+            const completeTask = async (taskId) => {
+                const response = await fetch(`/complete_task/${taskId}`, {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    fetchTasks();
+                }
+            };
+
+            const deleteTask = async (taskId) => {
+                const response = await fetch(`/delete_task/${taskId}`, {
+                    method: 'DELETE',
+                });
+                if (response.ok) {
+                    fetchTasks();
+                }
+            };
+
+            const addSubtask = () => {
+                setNewTask({
+                    ...newTask,
+                    subtasks: [...newTask.subtasks, { title: '', completed: false }]
+                });
+            };
+
+            const updateSubtask = (index, value) => {
+                const updatedSubtasks = [...newTask.subtasks];
+                updatedSubtasks[index].title = value;
+                setNewTask({ ...newTask, subtasks: updatedSubtasks });
+            };
+
+            return (
+                <div className="container mx-auto p-4">
+                    <h1 className="text-3xl font-bold mb-4">Procrastination Slayer</h1>
+                    
+                    <PomodoroTimer />
+                    
+                    <form onSubmit={handleSubmit} className="mb-8 bg-white p-4 rounded shadow">
+                        <input
+                            type="text"
+                            name="title"
+                            value={newTask.title}
+                            onChange={handleInputChange}
+                            placeholder="Task Title"
+                            className="w-full p-2 mb-2 border rounded"
+                            required
+                        />
+                        <textarea
+                            name="description"
+                            value={newTask.description}
+                            onChange={handleInputChange}
+                            placeholder="Description"
+                            className="w-full p-2 mb-2 border rounded"
+                        ></textarea>
+                        <select
+                            name="priority"
+                            value={newTask.priority}
+                            onChange={handleInputChange}
+                            className="w-full p-2 mb-2 border rounded"
+                        >
+                            <option value="A">A (Highest)</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E (Lowest)</option>
+                        </select>
+                        <input
+                            type="date"
+                            name="deadline"
+                            value={newTask.deadline}
+                            onChange={handleInputChange}
+                            className="w-full p-2 mb-2 border rounded"
+                            required
+                        />
+                        <select
+                            name="period"
+                            value={newTask.period}
+                            onChange={handleInputChange}
+                            className="w-full p-2 mb-2 border rounded"
+                        >
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                        <input
+                            type="text"
+                            name="key_result_area"
+                            value={newTask.key_result_area}
+                            onChange={handleInputChange}
+                            placeholder="Key Result Area"
+                            className="w-full p-2 mb-2 border rounded"
+                        />
+                        <input
+                            type="number"
+                            name="time_estimate"
+                            value={newTask.time_estimate}
+                            onChange={handleInputChange}
+                            placeholder="Time Estimate (minutes)"
+                            className="w-full p-2 mb-2 border rounded"
+                        />
+                        <textarea
+                            name="consequences"
+                            value={newTask.consequences}
+                            onChange={handleInputChange}
+                            placeholder="Consequences"
+                            className="w-full p-2 mb-2 border rounded"
+                        ></textarea>
+                        <div className="mb-2">
+                            <h4 className="font-semibold mb-1">Subtasks</h4>
+                            {newTask.subtasks.map((subtask, index) => (
+                                <input
+                                    key={index}
+                                    type="text"
+                                    value={subtask.title}
+                                    onChange={(e) => updateSubtask(index, e.target.value)}
+                                    placeholder={`Subtask ${index + 1}`}
+                                    className="w-full p-2 mb-1 border rounded"
+                                />
+                            ))}
+                            <button type="button" onClick={addSubtask} className="w-full p-2 bg-green-500 text-white rounded mt-1">
+                                Add Subtask
+                            </button>
+                        </div>
+                        <button type="submit" className="w-full p-2 bg-blue-500 text-white rounded">Add Task</button>
+                    </form>
+
+                    <div className="mb-4">
+                        <label className="mr-2">Filter:</label>
+                        <select
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        >
+                            <option value="all">All</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <h2 className="text-2xl font-bold mb-2">Tasks</h2>
+                        {tasks.map((task) => (
+                            <div key={task.id} className="bg-white p-4 mb-4 rounded shadow">
+                                <h3 className="text-xl font-semibold">{task.title}</h3>
+                                <p className="text-gray-600 mb-2">{task.description}</p>
+                                <p><strong>Priority:</strong> {task.priority}</p>
+                                <p><strong>Deadline:</strong> {task.deadline}</p>
+                                <p><strong>Period:</strong> {task.period}</p>
+                                <p><strong>Key Result Area:</strong> {task.key_result_area}</p>
+                                <p><strong>Time Estimate:</strong> {task.time_estimate} minutes</p>
+                                <p><strong>Consequences:</strong> {task.consequences}</p>
+                                {task.subtasks.length > 0 && (
+                                    <div className="mt-2">
+                                        <h4 className="font-semibold">Subtasks:</h4>
+                                        <ul className="list-disc pl-5">
+                                            {task.subtasks.map((subtask) => (
+                                                <li key={subtask.id} className={subtask.completed ? 'line-through' : ''}>
+                                                    {subtask.title}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                <div className="mt-4">
+                                    <button
+                                        onClick={() => completeTask(task.id)}
+                                        className="bg-green-500 text-white px-4 py-2 rounded mr-2"
+                                    >
+                                        Complete
+                                    </button>
+                                    <button
+                                        onClick={() => deleteTask(task.id)}
+                                        className="bg-red-500 text-white px-4 py-2 rounded"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        #pomodoro-timer {
+            width: 300px;
+            height: 300px;
+            border: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            resize: both;
+            overflow: auto;
+        }
+        .timer-display {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .timer-controls button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="pomodoro-timer">
+        <div class="timer-display" id="timer-display">25:00</div>
+        <div class="timer-controls">
+            <button onclick="timer.startTimer()">Start</button>
+            <button onclick="timer.pauseTimer()">Pause</button>
+            <button onclick="timer.resetTimer()">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        class Timer {
+            constructor() {
+                this.timer = null;
+                this.isPaused = false;
+                this.timeLeft = 25 * 60;
+            }
+
+            startTimer() {
+                if (!this.timer) {
+                    this.timer = setInterval(this.updateTimer.bind(this), 1000);
+                }
+                this.isPaused = false;
+            }
+
+            pauseTimer() {
+                this.isPaused = true;
+            }
+
+            resetTimer() {
+                clearInterval(this.timer);
+                this.timer = null;
+                this.timeLeft = 25 * 60;
+                this.updateDisplay();
+            }
+
+            updateTimer() {
+                if (!this.isPaused && this.timeLeft > 0) {
+                    this.timeLeft--;
+                    this.updateDisplay();
+                } else if (!this.isPaused) {
+                    clearInterval(this.timer);
+                    alert("Time's up!");
+                }
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                const displayElement = document.getElementById('timer-display');
+                if (displayElement) {
+                    displayElement.innerText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                } else {
+                    console.error('Timer display element not found.');
+                }
+            }
+        }
+
+        const timer = new Timer();
+        window.addEventListener('DOMContentLoaded', () => {
+            const startButton = document.querySelector('#pomodoro-timer button:nth-child(1)');
+            const pauseButton = document.querySelector('#pomodoro-timer button:nth-child(2)');
+            const resetButton = document.querySelector('#pomodoro-timer button:nth-child(3)');
+            if (startButton && pauseButton && resetButton) {
+                startButton.addEventListener('click', timer.startTimer.bind(timer));
+                pauseButton.addEventListener('click', timer.pauseTimer.bind(timer));
+                resetButton.addEventListener('click', timer.resetTimer.bind(timer));
+            } else {
+                console.error('Timer buttons not found.');
+            }
+        });
+    </script>
+</body>
+</html>
